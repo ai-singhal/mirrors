@@ -1,0 +1,19 @@
+{
+  "id": "mirrors",
+  "name": "Mirrors",
+  "description": "A local behavioral rule ledger with shadow observation and scoped interventions.",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "directory": {
+        "type": "string",
+        "description": "Absolute directory containing mirrors.yaml"
+      },
+      "model": {
+        "type": "string",
+        "description": "Actual model ID for rule pins; leave unset to report unknown"
+      }
+    },
+    "additionalProperties": false
+  }
+}

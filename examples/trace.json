@@ -1,0 +1,27 @@
+{
+  "id": "synthetic-document-example",
+  "model": "example-model",
+  "timestamp": "2026-09-16T00:00:00Z",
+  "intent": "Synthetic document-edit demonstration",
+  "tools": [
+    { "tool": "read_document", "args": { "id": "demo" }, "status": "success" },
+    {
+      "tool": "edit_document",
+      "args": { "node": "example-node" },
+      "status": "error",
+      "error": "Unknown node selector"
+    },
+    {
+      "tool": "edit_document",
+      "args": { "node": "example-node" },
+      "status": "error",
+      "error": "Unknown node selector"
+    },
+    {
+      "tool": "edit_document",
+      "args": { "node": "example-node" },
+      "status": "error",
+      "error": "Unknown node selector"
+    }
+  ]
+}

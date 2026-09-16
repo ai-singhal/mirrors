@@ -1,0 +1,21 @@
+# Copy into an agent repository that has Mirrors in its dependencies.
+name: Prompt growth
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Flag new conditional instructions
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: npx --no-install mirrors gate --base "$BASE_SHA"

@@ -1,0 +1,99 @@
+{
+  "name": "@ai-singhal/mirrors",
+  "version": "0.1.0",
+  "description": "A local-first behavioral rule ledger for AI agents.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "mirrors": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ai-sdk": {
+      "types": "./dist/adapters/ai-sdk.d.ts",
+      "import": "./dist/adapters/ai-sdk.js"
+    },
+    "./openclaw": {
+      "types": "./dist/adapters/openclaw.d.ts",
+      "import": "./dist/adapters/openclaw.js"
+    }
+  },
+  "files": [
+    "dist",
+    "ui-dist",
+    "packs",
+    "skills",
+    "python",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "openclaw.plugin.json",
+    "!python/**/__pycache__/**",
+    "!python/**/*.pyc",
+    "!python/*.egg-info/**"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts serve",
+    "cli": "tsx src/cli.ts",
+    "build": "tsup && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "bench": "tsx scripts/benchmark.ts",
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepack": "npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "agents",
+    "rules",
+    "observability",
+    "ledger",
+    "ai-sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ai-singhal/mirrors.git"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.54",
+    "ai": "^7.0.102",
+    "commander": "^15.0.0",
+    "lucide-react": "^1.46.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "esbuild": "^0.28.2",
+    "prettier": "^3.9.7",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/adapters/openclaw.js"
+    ]
+  },
+  "overrides": {
+    "tsup": {
+      "esbuild": "^0.28.1"
+    }
+  }
+}

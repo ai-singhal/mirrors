@@ -1,0 +1,9 @@
+node_modules
+package-lock.json
+dist
+ui-dist
+.mirrors
+test-results
+playwright-report
+python
+docs/assets
