@@ -1,53 +1,73 @@
-# Trace import
+# Ingestion from existing data
 
-```sh
-mirrors import traces ./exports
-```
+`mirrors ingest PATH` accepts a JSON/JSONL file or directory. It recursively reads JSON/JSONL, skips hidden directories and `node_modules`, normalizes runs, scores code signals, indexes them in SQLite and assigns unclassified intents. Reimporting the same run ID updates the run rather than duplicating it.
 
-Directories are traversed recursively for `.json`/`.jsonl`; hidden directories and `node_modules` are skipped. Malformed files are reported as warnings. Reimporting a trace with the same ID replaces its stored JSON. Export adapters are best-effort, not authenticated live vendor connectors.
+## Accepted shapes
 
-The native format is the reliable interchange contract:
+- **OpenAI messages:** assistant `tool_calls`, matching `tool_call_id` results, optional root tool schemas and metadata.
+- **Anthropic messages:** `tool_use` / `tool_result` blocks and `is_error`.
+- **River conversation exports:** `conversation_id`, professional-domain segment, date range, message metadata, tool calls with `resolved_outcome`/execution errors, alternate `user_message` text, and truncated-result markers. Original raw data remains local.
+- **Hermes/OpenClaw:** message JSON/JSONL exports, including `message` envelopes. Native SQLite session databases need export to JSON first.
+- **OTel:** `resourceSpans[].scopeSpans[].spans[]` with GenAI/OpenInference tool names, inputs, trace IDs, times and status.
+- **Langfuse-style** `observations`, **Braintrust-style** `rows`, and generic `spans` exports with recognized tool fields. Raindrop exports work when they contain a recognized message/span shape; otherwise export to the native format below. These are export importers, not authenticated vendor API clients.
+- **Native normalized runs:** the Zod contract in `src/observe/schema.ts`, with `steps`, version, model, metadata and captured messages.
+
+Unknown shapes produce warnings, not fabricated tool events. A file can be rejected without preventing other files from importing. Errors, unknown statuses, missing timestamps and missing schemas remain explicit.
+
+## Minimal portable format
+
+For measurement-only data, this simple tool trajectory also works:
 
 ```json
 {
   "id": "run-001",
-  "model": "provider/model-version",
-  "timestamp": "2026-09-16T12:00:00Z",
-  "intent": "Update a document",
+  "version": "release-1",
+  "model": "actual-model-id",
+  "intent": "document-editing",
+  "segment": "professional",
+  "timestamp": "2026-09-16T10:00:00Z",
   "tools": [
-    { "id": "call-1", "tool": "read_document", "args": { "id": "doc-1" }, "status": "success" },
+    { "tool": "read_document", "args": { "id": "example" }, "status": "success" },
     {
-      "id": "call-2",
       "tool": "edit_document",
-      "args": { "node": "n-1" },
+      "args": { "target": "n1" },
       "status": "error",
-      "error": "Unknown node"
+      "error": "Invalid target ID"
     }
   ]
 }
 ```
 
-Tool statuses: `success`, `error`, `unknown`, `blocked`. Model, timestamp and stable session ID should be supplied for useful comparisons. Unknown model IDs cannot earn a model pin. Missing timestamps are not replaced with today's date.
+This is enough for applicable tool-sequence signals. It is not enough for replay: replay also needs complete message prefixes, exact tool definitions and cached tool results. Importing an export does not automatically make it replayable.
 
-Also recognized:
-
-- OpenAI messages with `tool_calls` and matching `tool_call_id` results.
-- Anthropic `tool_use` / `tool_result` blocks, including explicit `is_error`.
-- Hermes/OpenClaw message-based JSON/JSONL exports (`message` envelope accepted). Native SQLite stores are not read directly; export messages first.
-- OTel `resourceSpans[].scopeSpans[].spans[]`, with `gen_ai.tool.name` or `openinference.span.kind=TOOL`, tool inputs, trace IDs and timestamps.
-- Langfuse-style `observations`, Braintrust-style `rows`, and `spans` exports with recognized tool fields.
-- Vendor exports under `traces`, `sessions`, `data` or `events`, when their rows contain one of these supported shapes. For Raindrop or custom exporters, normalize to the native contract if no tool events are detected.
-
-Tool-call IDs link calls and results. Text error inference is intentionally conservative: an arbitrary string containing “error” is not enough to assert failure. Exporters should supply structured status/error fields. Unsupported shapes produce a warning or no events, not fabricated evidence.
-
-## Human-flagged proposals
+Pass actual missing metadata explicitly:
 
 ```sh
-mirrors flag run-001 --note "Edit failed despite a successful read"
-mirrors propose
-mirrors propose --apply
+mirrors ingest ./release-1 --version v1 --model actual-model-id
+mirrors ingest ./release-2 --version v2 --intent document-editing --segment professional
 ```
 
-Proposals group flagged tool failures by tool and normalized error signature. Evidence includes trace IDs and step indices. Drafts always start in shadow. `--all-errors` explicitly broadens discovery to unflagged tool errors. Proposal clustering is deterministic; it does not claim to identify root causes automatically.
+A model alias is preserved as supplied, not resolved to an invented provider model. Date strings without a timezone in River exports represent UTC. For other sources use ISO 8601 timestamps with offsets. Raw/tool-only span imports may have less information than full message exports; coverage and replay readiness show that gap.
 
-`mirrors ask-agent run-001` sends the stored normalized trajectory to its recorded model and asks for a corrective instruction. It does not re-execute tools or prove a counterfactual. Supply `--model` for an unavailable model identifier. Review the printed draft before adding it.
+## DocumentDB / MongoDB
+
+The adapter uses the MongoDB driver and a read-only `find` cursor. It performs no database writes, disables retryable writes, limits batches/documents, and does not log the connection URI.
+
+```sh
+# Set MIRRORS_DOCUMENTDB_URI securely in your shell/environment.
+mirrors documentdb --uri-env MIRRORS_DOCUMENTDB_URI \
+  --database agent --collection conversations \
+  --ca-file /path/to/global-bundle.pem \
+  --query '{"created_at":{"$gte":"2026-08-17T00:00:00Z"}}' \
+  --limit 10000
+```
+
+The collection must contain conversation/message documents or supported exports. The date query's type/field must match the source collection; this example assumes an ISO string field. Native Mongo dates may require a source-specific query adapter. Use credentials with read-only permissions and the CA appropriate for your deployment. The URI is never accepted directly on a command line flag.
+
+A real DocumentDB connection requires your source schema, network access and credentials. Local tests verify normalization/validation without connecting to a customer's database.
+
+## Privacy and missing data
+
+Raw exports can contain sensitive text even if their user IDs are pseudonymous. Keep exports and `.mirrors/` out of git. Measurements do not leave your machine. Replay and judgment scoring are explicit opt-in provider calls; review the included content before using them.
+
+Cached tool results marked truncated are never treated as complete replay evidence. Missing deployment tags prevent release comparison. User-supplied version tags should describe real deploys; do not split historical runs into invented releases to make the table look populated.

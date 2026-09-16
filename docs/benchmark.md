@@ -18,9 +18,11 @@ The script exits nonzero if p95 exceeds 5 ms. This threshold is intentionally no
 
 ## Functional validation
 
-- 49 TypeScript tests: runtime invariants, fail-open behavior, shadow/control, conflicts, timeouts, trace normalization, metrics, local HTTP, proxy streaming, actual AI SDK model loop, proposal flags, prompt snapshots and review records.
+- 88 TypeScript tests: runtime invariants, fail-open behavior, shadow/control, conflicts, timeouts, trace normalization, metrics, local HTTP, proxy streaming, actual AI SDK model loop, proposal flags, prompt snapshots and review records.
 - 8 Python tests: local client failure handling, Hermes hook contract, actual Pydantic AI TestModel/toolset, actual LangGraph graph and tool blocking.
-- 3 Playwright tests: author/edit/status persistence, import, mobile overflow, human review.
+- 5 Playwright tests: author/edit/status persistence, import, mobile overflow, human review.
 - TypeScript declarations and production UI build.
+
+The observation suite also checks eleven positive/negative detector fixtures, traffic-mix changes, missing version tags, shared deploys, fix verification gates, persistent labels and intent names, OTel normalization, truncated replay caches and deadlines.
 
 Framework hook fixtures do not replace testing in a real Hermes/OpenClaw deployment. Model judgment calls require credentials and were not exercised against a paid provider.

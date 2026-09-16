@@ -1,4 +1,6 @@
-# Integrations
+# Optional runtime integrations
+
+Measurement uses `mirrors ingest` and does not require these wrappers. Add runtime hooks only when a rule-type fix needs an intervention.
 
 Install from this source checkout, build, and link the CLI. In another Node project, use `npm install /absolute/path/to/mirrors`. No registry package is assumed. Python bridges need the loopback server running: `mirrors --cwd /path/to/agent serve`.
 
@@ -86,7 +88,7 @@ python3 -m venv .venv
 .venv/bin/pip install -e '/absolute/path/to/mirrors/python[pydantic,langgraph]'
 ```
 
-`MirrorsClient` uses standard-library HTTP. Instantiate per run with a stable session ID and actual model ID. It fails open on transport/validation errors. The default timeout is 250ms; opt-in remote judgments often need a larger caller timeout (for example `timeout=1.0` for a 500ms judgment budget).
+`MirrorsClient` uses standard-library HTTP. Instantiate per run with a stable session ID and actual model ID. It fails open on transport/validation errors. The default timeout is 250ms; opt-in remote judgments often need a larger caller timeout (for example `timeout=1.0` for a 300ms judgment budget).
 
 ### Hermes
 

@@ -1,0 +1,350 @@
+.rule-nav-caption {
+  margin-top: 30px;
+}
+.heading-actions {
+  display: flex;
+  gap: 10px;
+}
+.page-heading h1 {
+  font-size: 31px;
+}
+.observation-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 24px 0;
+}
+.observation-toolbar > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.observation-toolbar select,
+.plain-select,
+.release-controls select,
+.observation-modal input,
+.observation-modal select {
+  background: #171d17;
+  color: #dce3d9;
+  border: 1px solid #333c32;
+  border-radius: 6px;
+  padding: 9px 11px;
+  font: inherit;
+  max-width: 100%;
+}
+.table-title {
+  font-size: 15px;
+  margin: 0 0 5px;
+}
+.signal-definition {
+  color: #7e8b7d;
+  max-width: 380px;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 7px 0 0 20px;
+  white-space: normal;
+}
+.text-button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: #c4dfb5;
+  font-size: 12px;
+}
+.negative {
+  color: #e1a39a;
+}
+.regression {
+  color: #e6a596 !important;
+  background: #392720 !important;
+}
+.improved {
+  color: #b2d999;
+  background: #263523;
+}
+.stable {
+  color: #bac1b7;
+  background: #2a3028;
+}
+.insufficient {
+  color: #b2b6aa;
+  background: #252a25;
+}
+.release-controls {
+  margin-bottom: 24px;
+}
+.release-controls > div {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.release-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #8d9e88;
+  flex: 1;
+}
+.release-controls select {
+  font-size: 14px;
+  letter-spacing: 0;
+}
+.release-controls p {
+  font-size: 12px;
+  margin-top: 20px;
+}
+.fix-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  margin: 8px 0;
+}
+.fix-comparison small {
+  color: #8a9887;
+}
+.signal-number {
+  display: inline-grid;
+  place-content: center;
+  min-width: 28px;
+  height: 26px;
+  border-radius: 6px;
+  background: #20291f;
+  color: #94a68b;
+}
+.signal-number.has-hits {
+  color: #e0b684;
+  background: #322c20;
+}
+.command-example {
+  white-space: pre-wrap;
+  background: #101610;
+  border: 1px solid #303b2c;
+  color: #bcd8aa;
+  padding: 18px;
+  font-size: 12px;
+  border-radius: 8px;
+  line-height: 1.7;
+}
+.replay-legend {
+  display: flex;
+  gap: 10px;
+  margin: 24px 0;
+}
+.replay-report {
+  padding: 16px 0;
+  border-top: 1px solid #2d362a;
+}
+.replay-report summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.replay-report pre {
+  font-size: 11px;
+  overflow: auto;
+  max-height: 500px;
+}
+.run-link {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  border-bottom: 1px solid #2b3528;
+  padding: 18px 0;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.run-link span {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow-wrap: anywhere;
+}
+.run-link small {
+  color: #92a08b;
+  font-size: 11px;
+}
+.conversation-drawer {
+  width: min(760px, 100vw);
+}
+.conversation-prompt {
+  background: #1b241a;
+  border: 1px solid #303e2c;
+  padding: 18px;
+  border-radius: 8px;
+  margin: 25px 0;
+}
+.conversation-prompt small {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #9bab94;
+}
+.conversation-prompt p {
+  color: #d0dcc8;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sample-review {
+  padding: 14px 0;
+  border-bottom: 1px solid #293325;
+}
+.sample-review strong {
+  font-size: 12px;
+}
+.sample-review small {
+  display: block;
+  color: #95a58e;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.conversation-step {
+  border: 1px solid #2d3729;
+  border-radius: 8px;
+  margin: 20px 0;
+  overflow: hidden;
+}
+.step-heading {
+  display: flex;
+  justify-content: space-between;
+  background: #1b221a;
+  padding: 11px 16px;
+  color: #8e9c85;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.message-text {
+  font-size: 13px !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 0 16px;
+}
+.tool-call {
+  padding: 14px;
+  border-top: 1px solid #30392b;
+}
+.tool-call summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.tool-call summary .muted {
+  margin-left: auto;
+  font-size: 10px;
+}
+.tool-state {
+  height: 7px;
+  width: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #8d9987;
+}
+.tool-state.error {
+  background: #d99882;
+}
+.tool-state.success {
+  background: #a7ce8e;
+}
+.tool-call pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #0f140e;
+  padding: 12px;
+  max-height: 400px;
+  overflow: auto;
+  font-size: 11px;
+}
+.tool-call small {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #8d9b84;
+}
+.observation-modal {
+  max-height: 90vh;
+  overflow: auto;
+}
+.observation-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: #a9b7a1;
+  margin: 18px 0;
+}
+.observation-modal input,
+.observation-modal select {
+  width: 100%;
+  font-size: 13px;
+}
+.observation-modal textarea {
+  min-height: 100px;
+  margin: 0;
+}
+.observation-modal .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.observation-modal .primary.wide {
+  margin-top: 20px;
+}
+.table-footer {
+  line-height: 1.5;
+}
+.conversation-drawer h3 {
+  margin-top: 30px;
+}
+.nav-item {
+  text-decoration: none;
+}
+@media (max-width: 900px) {
+  .heading-actions {
+    flex-wrap: wrap;
+  }
+  .page-heading h1 {
+    font-size: 26px;
+  }
+  .observation-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .release-controls > div {
+    gap: 12px;
+  }
+  .signal-definition {
+    max-width: 280px;
+  }
+}
+@media (max-width: 600px) {
+  .heading-actions {
+    width: 100%;
+    margin-top: 15px;
+  }
+  .heading-actions button {
+    flex: 1;
+  }
+  .page-heading {
+    align-items: flex-start;
+  }
+  .observation-modal .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .release-controls > div {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .release-controls > div > svg {
+    display: none;
+  }
+  .replay-legend {
+    flex-wrap: wrap;
+  }
+}

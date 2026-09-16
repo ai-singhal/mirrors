@@ -41,7 +41,7 @@ condition:
   type: judgment
   question: Is the agent repeating a failed lookup without changing its query?
   confidence: 0.9
-  timeout_ms: 500
+  timeout_ms: 300
 ```
 
 Enable remote judgments explicitly with `mirrors serve --judge`. Set `ANTHROPIC_API_KEY` for the default Haiku model, or `AI_GATEWAY_API_KEY` for the gateway. Override with `MIRRORS_JUDGE_MODEL`. The adapter uses structured yes/no output. Missing credentials, timeout, error, or insufficient confidence skips that judgment. At most eight applicable judgment rules run concurrently per evaluation; excess judgment rules are skipped. You can supply your own `Judge` function to `Runtime`.

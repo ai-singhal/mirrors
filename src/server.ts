@@ -1,3 +1,5 @@
+import { ObservationStore } from './observe/database.js';
+import { observationApi } from './observe/api.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, extname, dirname } from 'node:path';
@@ -37,6 +39,7 @@ function json(res: ServerResponse, status: number, data: unknown) {
 }
 export function startServer(store: Store, port = 7433, host = '127.0.0.1', judge?: Judge) {
   const runtime = new Runtime(store, judge);
+  const observations = new ObservationStore(store.root);
   const candidates = [
     resolve(dirname(fileURLToPath(import.meta.url)), '../ui-dist'),
     resolve(dirname(fileURLToPath(import.meta.url)), '../../ui-dist'),
@@ -57,6 +60,20 @@ export function startServer(store: Store, port = 7433, host = '127.0.0.1', judge
         !req.headers['content-type']?.startsWith('application/json')
       )
         return json(res, 415, { error: 'Use application/json' });
+      if (path.startsWith('/api/observe/')) {
+        const parsedUrl = new URL(req.url ?? '/', 'http://localhost');
+        return json(
+          res,
+          200,
+          await observationApi(
+            observations,
+            req.method ?? 'GET',
+            path.slice('/api/observe'.length),
+            parsedUrl.searchParams,
+            req.method === 'GET' ? undefined : await body(req),
+          ),
+        );
+      }
       if (path === '/api/health') return json(res, 200, { ok: true });
       if (path === '/api/state' && req.method === 'GET') {
         const ledger = store.read();
@@ -224,6 +241,7 @@ export function startServer(store: Store, port = 7433, host = '127.0.0.1', judge
       json(res, 400, { error: e instanceof Error ? e.message : String(e) });
     }
   });
+  server.once('close', () => observations.close());
   server.listen(port, host);
   return server;
 }

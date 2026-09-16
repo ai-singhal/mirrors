@@ -53,7 +53,7 @@ export function draftRule(
           type: 'judgment',
           question: `Does this instruction apply to the current trajectory and proposed next step? Instruction: ${text}`,
           confidence: 0.9,
-          timeout_ms: 500,
+          timeout_ms: 300,
         },
     actions: [{ type: 'inject', text }],
     status: 'shadow',

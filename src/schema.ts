@@ -29,7 +29,7 @@ export const conditionSchema = z.discriminatedUnion('type', [
       type: z.literal('judgment'),
       question: z.string().min(1).max(4000),
       confidence: z.number().min(0).max(1).default(0.85),
-      timeout_ms: z.number().int().min(10).max(10000).default(500),
+      timeout_ms: z.number().int().min(10).max(300).default(300),
     })
     .strict(),
 ]);

@@ -1,49 +1,68 @@
-# Measurement
+# Failure signals, release health and fix evidence
 
-## Live outcomes
+## Primitive: the signal
 
-Call `Runtime.finish(context, failures?)`, adapter `finish`, or `POST /api/finish` exactly at the end of the host run. The failure predicate runs against the final trajectory window. For a failure that happened anywhere in a run and later recovered, keep your own boolean and pass `{ "rule-id": true }` explicitly if that is the outcome you want to measure. The default repeated-error signal measures unresolved repetition at the end, not every earlier retry.
+A signal has an immutable ID, a plain-English definition, a deterministic detector (or explicit judgment adapter), a confidence threshold and a human-labeled sample set. Changing the definition requires a new ID. Matching a definition is not equivalent to proving a real-world failure.
 
-Each rule/session has one terminal outcome per revision; a later record replaces an earlier one in metrics. Only active, unexpired, matching-pin rules supported by the host enter terminal recurrence. Treatment and control include all eligible completed sessions, even those where the condition never matched (intent-to-treat).
+Built-in code detectors:
 
-Cohorts are assigned by SHA-256 of the rule ID and session ID. Keep session IDs unique per run and reuse the same ID throughout a run. Active rules use the configured rollout; shadow never changes behavior.
+| Signal                      | Observable event                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
+| `invalid-target-error`      | An explicit error identifies a rejected node, selector, old string or target ID                |
+| `repeated-identical-error`  | Consecutive identical tool names/argument hashes both explicitly fail                          |
+| `unresolved-tool-error`     | A completed run's final recorded tool call failed                                              |
+| `success-claim-after-error` | Completion vocabulary in a final message after an unresolved tool error                        |
+| `open-without-read`         | A successful open-named tool has no subsequent read/extract/parse-named call                   |
+| `step-budget-exceeded`      | More than 25 tool calls by default                                                             |
+| `error-ignored`             | An error is followed by a different tool outside the configured naming convention for recovery |
+| `empty-result-retry`        | Same search repeated after an explicitly empty result                                          |
+| `invalid-target-retry`      | Identical arguments retried immediately after a rejected target                                |
+| `tool-not-loaded`           | Explicit missing-tool/loading prerequisite error                                               |
+| `write-before-read`         | A write/edit-named call precedes any read/get/inspect/fetch-named call                         |
 
-`recurrence_per_1k = 1000 * failed_completed_sessions / completed_sessions`
+Names and exact definitions are available in the UI and `signals list`. Several detectors are naming conventions or lexical candidates. Creating a new document legitimately may trigger “write before read”; that is why labels are mandatory for verification. Tests establish that predicates match their definitions on fixtures, not 100% empirical precision on every deployment.
 
-`lift = (control_rate - treatment_rate) / control_rate`
+## Labels, precision and coverage
 
-A zero control rate makes relative lift undefined. There is no manufactured zero for missing data.
+Inspect positive and negative conversations. “Agree” confirms the detector's result at that sample; “disagree” rejects it. Latest labels replace earlier labels for the same signal/run/step and retain the reviewer and timestamp. Run-content changes invalidate labels and retain an audit record; metadata-only changes preserve them. Signal definitions cannot change in place.
 
-## Verdicts
+- **Affected runs:** distinct indexed runs with at least one hit.
+- **Rate:** affected runs divided by assessable runs in the selected time window.
+- **Coverage:** assessable runs divided by indexed runs in that window. Missing required evidence is not a negative.
+- **Precision:** agreeing positive labels divided by labeled positives.
+- **Agreement:** agreeing labels divided by all labeled samples.
+- **Reviewed:** at least one positive and one negative sample labeled. This minimal gate is not a statistical guarantee.
 
-- **Dead weight:** no assessed match after the configured minimum observed runs, in the measurement window. Unsupported phases and unavailable judgments do not count as assessed observations.
-- **Working / not working:** at least `expiry.min_runs` terminal sessions in each arm (default 30), a defined failure signal, and an approximate normal 95% difference interval excluding zero.
-- **Cannot assess:** insufficient outcomes, no failure signal, or inconclusive difference.
+A timestamp-less import uses the epoch and falls outside recent windows. Partial runs do not enter release-health denominators. Status-dependent detectors skip runs without known tool status; completion detectors need a final message. Judgment timeouts are “no answer,” never hits or clean negatives.
 
-These are exploratory indicators, not proof of causality. Several simultaneously active rules may interact; rare outcomes, repeated sessions from the same user, drift, and multiple comparisons weaken the approximation. Use controlled isolated experiments for stronger claims. This release does not provide multiplicity corrections or sequential-testing guarantees.
+## Release comparisons
 
-Human labels are attached only to actual fired events. The latest label wins. `correct` is positive; `incorrect` and `override` are negatives. Unlabeled fires do not enter precision. Override thresholds can nominate a rule for retirement.
+Default selection: latest known version and the preceding known version. Explicit baseline/current IDs are supported. Version hashes derived from captured prompt/code provenance are known; model identity alone is not a deployment version.
 
-A fire is an engine decision handed to the adapter, not proof that an upstream model obeyed it. A host or upstream failure after evaluation can prevent an intended action. Use terminal outcomes and labels to judge effectiveness.
+Within the rolling window, group completed assessable runs by **signal × intent × segment × version**. Compare failed-run proportions. Report regression when the after rate exceeds the before rate by more than the configured absolute delta (default 0.05), with at least 30 samples on each side in that group. Report improvements by the symmetric threshold; otherwise stable or insufficient.
 
-## Replay
+Show the sample sizes and affected runs with the most hit steps. Do not assign p-values. Traffic mix is partly controlled by grouping, but user changes within segments, model changes, simultaneous fixes and instrumentation changes still confound results. There is no universal within-hour guarantee: alerting needs fresh imports, a running watcher and enough traffic.
 
-Backtests evaluate code conditions on recorded tool transitions. Judgment conditions are skipped offline. Retrospective failure rates are descriptive rates among historical matching runs, not treatment/control results. Undated exports use an epoch timestamp and are excluded from recent-window backtests until supplied with a real timestamp.
+Intents are grouping metadata only. The default local feature-hash embedding is a low-cost lexical approximation; it is not a pretrained semantic encoder. Review/naming is important before trusting segment comparisons. Existing intent/segment metadata is preferable.
 
-Prompt archaeology reports line candidates, git blame age, history and lexical overlap/possible contradictions. It does not prove semantic equivalence or contradictory behavior. Prompt import is a line heuristic; manually review multi-line instructions.
+## Unit: the fix
 
-## Lifecycle and budgets
+Each fix maps to one target signal, a type, a shipped version, optional baseline/model pins, status, source and notes. Several fixes in the same deploy share the same measurement. Mirrors says so instead of claiming individual causal credit.
 
-Expiry and pin mismatches take effect during evaluation. Retirement is applied through `mirrors lifecycle --apply`. The no-lift policy is deliberately conservative: it retires on evidence of worse recurrence, not on an inconclusive sample. Idle retirement needs both elapsed time and enough assessed runs. No rule activates itself.
+Verification is an explicit operation. It requires a shipped version, a model pin matching that release when present, human-reviewed positive and negative signal samples, adequate samples for all observed groups, at least one improvement and no regression. An insufficient group blocks verification rather than being silently dropped.
 
-Budgets deduplicate terminal sessions by failure class. Any positive outcome for that class makes the run a failure. `mirrors budget` exits 2 on a breach; connect that to your existing alerting. Budget rates include both cohorts. Automatic paging and email are not bundled.
+Runtime rules can supply a separate session-hash experiment. Their treatment/control recurrence uses explicit terminal run outcomes, documented in [runtime measurement](runtime-measurement.md). It is separate from observational release comparisons.
 
-`mirrors digest` prints five lines. Optional `--webhook-env NAME` posts those lines to the Slack webhook supplied in the environment. Scheduling and delivery require explicit configuration by the operator.
+## Cached-result replay
 
-## Prompt size
+A replay model receives the conversation prefix with the candidate system prompt and captured tool schemas. Previously replayed assistant messages replace the old assistant messages in later prefixes. Tool results come only from the captured run.
 
-Record `mirrors prompt-snapshot ./AGENTS.md` before and after deliberately removing migrated instructions. Snapshots store the path, hash, and approximate token count, not prompt contents. The digest shows the aggregate change from the first to latest snapshot for each path. A negative saving means the prompt grew. This does not estimate requests served or total dollars saved.
+For each model step, compare generated tool names, order and canonical argument hashes with the recorded actions. An exact match allows reuse of cached results. At the first difference, stop and report **diverged**. Missing or explicitly truncated results/schemas yield **unreplayable**. No tool function is installed for execution.
 
-## Storage and overhead
+Code signals are evaluated on the aligned prefix. Only completed replay trajectories enter whole-run before/after hit totals; diverged, failed and unreplayable trajectories have separate counts. A changed final answer may affect a lexical signal, but unchanged cached tool outcomes cannot prove that a production defect was fixed.
 
-Evaluation latency excludes parsing, compilation, telemetry writes, HTTP, and host application of the decision. Judgment latency is included when configured. Local storage is append-only JSONL and per-trace JSON files, intended for a developer workspace, not high-volume centralized ingestion. There is no retention daemon. Archive or remove `.mirrors/` yourself when appropriate. Never commit sensitive trace exports.
+## Storage
+
+`.mirrors/index.sqlite` contains relational metadata, hashes, signal hits/assessments, labels, versions, fixes/results, optional rule/fire mirrors, intent clusters and replay reports. `model_calls` preserves model-only step hashes; `steps` indexes individual tool calls. Raw original exports plus normalized messages live in `.mirrors/runs/` under content-addressed filenames.
+
+The SQL index is still sensitive: error reasons, fix notes, sources and replay reports may contain text. “Hashes in the index” is not an anonymization guarantee. Nothing uploads by default. The UI exposes raw conversations only over loopback. This release has no hosted tenancy, automatic retention or synchronized team permissions.

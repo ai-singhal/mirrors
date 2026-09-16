@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 test('the ledger can author, edit, switch and import real persisted state', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/');
+  await page.goto('/?view=rules');
   await expect(page.getByRole('heading', { name: 'Your rules, reflected.' })).toBeVisible();
   await expect(page.getByText('Demo workspace', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'test-results/ledger-desktop.png', fullPage: true });
@@ -46,7 +46,7 @@ test('the ledger can author, edit, switch and import real persisted state', asyn
 });
 test('small-screen ledger remains usable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?view=rules');
   await expect(page.getByRole('button', { name: 'Add a rule', exact: true })).toBeVisible();
   await page.screenshot({ path: 'test-results/ledger-mobile.png', fullPage: true });
   const widths = await page.evaluate(() => ({
@@ -83,7 +83,7 @@ test('human review records a decision in the local queue', async ({ page, reques
     })
   ).json();
   expect(decision.blocked).toBe(true);
-  await page.goto('/');
+  await page.goto('/?view=rules');
   await page.getByRole('button', { name: 'Human review', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Human review queue' })).toBeVisible();
   await page.getByRole('button', { name: 'Approve', exact: true }).click();

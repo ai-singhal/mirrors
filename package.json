@@ -1,7 +1,7 @@
 {
   "name": "@ai-singhal/mirrors",
-  "version": "0.1.0",
-  "description": "A local-first behavioral rule ledger for AI agents.",
+  "version": "0.2.0",
+  "description": "Local-first failure signals, release health, and evidence for every agent fix.",
   "type": "module",
   "license": "MIT",
   "bin": {
@@ -36,7 +36,7 @@
     "!python/*.egg-info/**"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "scripts": {
     "dev": "tsx src/cli.ts serve",
@@ -67,6 +67,7 @@
     "ai": "^7.0.102",
     "commander": "^15.0.0",
     "lucide-react": "^1.46.0",
+    "mongodb": "^6.21.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "yaml": "^2.9.1",

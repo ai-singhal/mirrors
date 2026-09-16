@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { registerObservationCLI } from './observe/cli.js';
+import { ObservationStore } from './observe/database.js';
+import { createObservationDemo } from './observe/demo.js';
 import { Command } from 'commander';
 import { readFileSync, writeFileSync, existsSync, mkdtempSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -34,10 +37,8 @@ import {
 import { createDemo } from './demo.js';
 const cli = new Command()
   .name('mirrors')
-  .description(
-    'Every agent rule gets a condition, a fire count, a recurrence number, and a switch.',
-  )
-  .version('0.1.0')
+  .description('Know what broke, by task. Track every fix to a number. Check every deploy.')
+  .version('0.2.0')
   .option('--cwd <directory>', 'project directory', process.cwd());
 const store = () => new Store(cli.opts().cwd);
 const print = (v: unknown) => console.log(JSON.stringify(v, null, 2));
@@ -56,10 +57,13 @@ function addRules(rules: any[]) {
 cli
   .command('init')
   .description('Create a ledger; all starter rules are silent in shadow')
-  .option('--empty', 'start without rule packs')
+  .option('--empty', 'start without runtime rules (default)')
+  .option('--with-rules', 'include optional shadow rule packs')
   .action((o) => {
     const v = starterLedger();
-    if (o.empty) v.rules = [];
+    if (o.empty || !o.withRules) v.rules = [];
+    const observations = new ObservationStore(store().root);
+    observations.close();
     store().init(v);
     console.log(`Created ${store().path}. ${v.rules.length} rules in shadow.\nNext: mirrors serve`);
   });
@@ -211,7 +215,7 @@ cli.command('label <eventId> <label>').action((id, label) => {
   console.log('Label saved.');
 });
 cli
-  .command('digest')
+  .command('rule-digest')
   .option('--days <n>', 'window', '7')
   .option(
     '--webhook-env <variable>',
@@ -393,7 +397,8 @@ cli
   .option('--judge', 'enable the configured remote judgment model')
   .option('--port <port>', 'loopback port', '7433')
   .action(async (o) => {
-    store().read();
+    if (!existsSync(store().path))
+      store().init({ version: 1, name: 'My agent', rules: [], budgets: [] });
     const judge = o.judge ? (await import('./judge.js')).createJudge() : undefined;
     const server = startServer(store(), Number(o.port), '127.0.0.1', judge);
     server.on('listening', () =>
@@ -420,8 +425,15 @@ cli
   .action((o) => {
     const dir = o.dir ? resolve(o.dir) : mkdtempSync(join(tmpdir(), 'mirrors-demo-'));
     createDemo(new Store(dir));
+    const observations = new ObservationStore(dir);
+    try {
+      createObservationDemo(observations);
+    } finally {
+      observations.close();
+    }
     console.log(`Synthetic demo created at ${dir}\nmirrors --cwd ${JSON.stringify(dir)} serve`);
   });
+registerObservationCLI(cli);
 cli.parseAsync().catch((e) => {
   console.error(`mirrors: ${e.message ?? e}`);
   process.exitCode = 1;

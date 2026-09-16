@@ -1,29 +1,38 @@
 ---
 name: mirrors
-description: Draft and evaluate scoped behavioral rules in a project's Mirrors ledger. Use when a recurring agent failure needs a conditional fix, a prompt is accumulating behavioral instructions, or the user asks to import, measure, or retire Mirrors rules.
+description: Track a production-agent fix from its target failure signal through a shipped version and before/after evidence. Use when editing agent code or prompts to address a recurring failure, reviewing release regressions, labeling trace signals, or creating an optional scoped runtime rule.
 ---
 
-# Mirrors behavioral rules
+# Mirrors: know, fix, verify
 
-Use the project's `mirrors.yaml` to turn a repeated failure into a condition that can be observed and reviewed. The CLI is `mirrors`; use `mirrors --cwd <project>` when working elsewhere. If it is unavailable, explain the source-install prerequisite rather than pretending a rule was applied.
+The unit is the **fix**. The failure signal is the measurement primitive. Runtime rules are one opt-in fix type.
 
-## Draft a fix
+## Register the change you are making
 
-1. Inspect the failing tool transition and existing rules. Distinguish a tool contract defect from behavior the agent can change. A reminder cannot repair an incompatible reader/writer ID format.
-2. Run `mirrors add "When <observable situation>, <specific behavior>"`, or flag an imported trace and use `mirrors propose --apply`. Both create shadow drafts.
-3. Read the generated YAML. Replace broad judgments with observable code predicates when the trace supports them. Scope the rule to the relevant tools/statuses; include a meaningful terminal failure signal where possible.
-4. Run `mirrors validate` and `mirrors backtest`. Explain the rule, evidence, and measurement gap. A replay match does not prove a fix.
+1. Inspect existing evidence with `mirrors signals list`, `mirrors signals samples SIGNAL_ID`, and `mirrors inspect RUN_ID`. Match a precise definition to the failure; do not confuse infrastructure defects with behavior a reminder can correct.
+2. After an authorized code/prompt change, register it:
 
-Activation requires an explicit user instruction to activate the specific rule; creating a shadow draft does not require another approval when already requested. Preserve any user-authorized rollout. Never activate a draft merely because a historical condition matched.
+   ```sh
+   mirrors fix add "What changed" --type code --signal SIGNAL_ID --source COMMIT_OR_FILE
+   ```
 
-## Keep the prompt reviewable
+   Use `--type prompt` for a prompt edit. Use `--type rule` when the correction is a scoped “when X, do Y” and runtime intervention fits the user's goal. This creates a linked shadow rule in `mirrors.yaml`.
 
-Prefer a scoped ledger rule for a new conditional behavioral instruction when it fits the user's goal. Do not remove existing prompt text automatically. When the user requests migration, record `mirrors prompt-snapshot <file>` before and after the edit, and update the prompt pin deliberately.
+3. Pin the actual shipped version with `mirrors fix ship FIX_ID --version VERSION --baseline PREVIOUS_VERSION`. Do not invent version tags, commits or deploys. Until shipped, keep the fix proposed.
+4. Run `mirrors fix results FIX_ID`. Use `mirrors fix verify FIX_ID` only when the user requested verification and there are adequate outcomes and reviewed positive/negative samples. Report shared-deploy confounds.
 
-Do not move task requirements, identity, tool schemas, or permission boundaries into fallible behavioral guidance. Mirrors is fail-open and cannot enforce security policy.
+## Evidence rules
 
-## Measure and retire
+Code signals are deterministic about their definitions, not automatically correct about user intent. Human sample labels are required; never label yourself as a human or fabricate samples. Missing data and “insufficient” are valid results. Intents group runs; they never detect failures.
 
-Inspect `mirrors report`, actual fire labels, treatment/control counts and the failure definition. “Cannot assess” is valid. Keep a control cohort when assessing lift. Preview `mirrors lifecycle` or `mirrors upgrade <model>` and apply only within the user's requested scope. Record overrides with `mirrors label <event-id> override`.
+Replay calls only the model and substitutes cached tool results. It must stop at divergence. Use `mirrors replay SIGNAL_ID --model MODEL` only when sending the captured prefixes to that provider is within the user's request. Do not execute real tools to make replay pass.
 
-Agent-suggested corrections remain drafts. `ask-agent` sends a trace to a model; use it only when that external analysis is within the user's request. Keep private traces and `.mirrors/` out of git. Do not schedule messages or publish registry claims as a side effect of authoring a rule.
+## Optional runtime fixes
+
+Read and review the drafted condition and action. Prefer a code predicate when evidence supports it. `mirrors validate` checks the ledger. All drafts start in shadow; activation needs an explicit user instruction for that rule and rollout. Prior authorization remains valid.
+
+Do not automatically remove prompt instructions or move authorization boundaries into fail-open rules. For a user-requested migration, snapshot prompt size before/after and update pins deliberately. A reader/writer ID mismatch usually needs a contract fix; another reminder cannot repair the API.
+
+## Local first
+
+Import existing sessions with `mirrors ingest PATH`; no SDK wrapper is required. Keep raw exports and `.mirrors/` out of git. Do not publish customer recurrence numbers, schedule messages or call an external provider as a side effect of registering a fix. If the CLI is missing, use the source-install instructions rather than claiming a fix was recorded.

@@ -1,14 +1,16 @@
 # Mirrors
 
-**Every rule you give your agent gets a condition, a fire count, a recurrence number, and a switch.**
+**Know what broke, by task; track every fix to a number; catch regressions before and after a deploy.**
 
-Mirrors is a local behavioral rule ledger for AI agents. Import the instructions already in your prompt, observe them in shadow, and activate only the interventions worth keeping. The ledger lives in your repository as `mirrors.yaml`.
+Mirrors is a local tool for production-agent failure analysis. Import the traces you already have, inspect deterministic failure signals, compare releases within task types and user segments, and link each fix to the outcome it targets.
 
-![Mirrors local rule ledger, showing explicitly synthetic demonstration data](docs/assets/ledger.png)
+**The unit is the fix. The primitive is the failure signal. Runtime rules are one optional fix type.**
+
+![Mirrors failure patterns and release health; synthetic demonstration data](docs/assets/overview.png)
 
 ## Try it
 
-Requires Node.js 22 or newer. This is a source release; the npm package has not been published.
+Node.js **22.13+** is required for built-in SQLite. The npm package is not published; install from source:
 
 ```sh
 git clone https://github.com/ai-singhal/mirrors.git
@@ -20,109 +22,96 @@ mirrors demo --dir /tmp/mirrors-demo
 mirrors --cwd /tmp/mirrors-demo serve
 ```
 
-Open **http://127.0.0.1:7433**. The demo uses clearly labeled synthetic activity. It does not connect to or change an agent.
+Open **http://127.0.0.1:7433**. The demo has 360 synthetic runs across two versions and three tracked fixes. Human labels are intentionally empty; demonstration metrics are not production evidence.
 
-For your own project:
+## Fifteen minutes to your own table
 
 ```sh
 cd /path/to/your-agent
 mirrors init
-mirrors import prompt AGENTS.md
-mirrors import traces ./exported-sessions
-mirrors backtest --days 30
+mirrors ingest ./exported-sessions
+mirrors signals list --days 30
 mirrors serve
 ```
 
-The four bundled rules and all imported candidates start in **shadow**. Prompt import creates drafts; it does not remove instructions from your prompt. Judgment drafts need an opt-in judge to collect matches.
-
-## The loop
-
-1. **Discover:** import conditional prompt lines, inspect git history, import exported sessions, replay code conditions, or ask the original model for a corrective draft.
-2. **Observe:** shadow rules log matching situations without changing the agent.
-3. **Intervene:** activate a rule for a deterministic percentage of sessions. Inject a reminder, mask or force a tool, block a call, route a model step, or request human review.
-4. **Measure:** label real interventions and compare terminal failure recurrence in treatment and control. Missing evidence stays missing.
-5. **Retire:** inspect model-upgrade reports, override thresholds, inactivity and expiry. Lifecycle changes are explicit with `--apply`.
+No SDK wrapper or inference proxy is required for measurement. JSON/JSONL imports recognize message exports, OTel tool spans, Langfuse-style observations, Braintrust-style rows, Hermes/OpenClaw message sessions, and DocumentDB conversation documents. Vendor-specific formats must contain supported fields; see [ingestion](docs/trace-formats.md).
 
 ```sh
-mirrors add "When the same tool call fails twice, inspect the error before retrying."
-mirrors set loop-breaker active --rollout 10
-mirrors report
-mirrors digest
-mirrors lifecycle --apply
+# Attach real release tags when the export omitted them.
+mirrors ingest ./before --version release-1
+mirrors ingest ./after --version release-2
+mirrors health --baseline release-1 --version release-2
 ```
 
-## A rule is code you can review
+Mirrors does not invent missing deployment versions, model IDs, timestamps, tool schemas, outcomes or human labels.
 
-```yaml
-version: 1
-name: My agent
-rules:
-  - id: loop-breaker
-    name: Break repeated tool failures
-    status: shadow
-    rollout: 10
-    priority: 100
-    condition:
-      type: code
-      when:
-        all:
-          - { field: repeat_count, op: gte, value: 2 }
-          - { field: last.status, op: eq, value: error }
-    actions:
-      - type: inject
-        text: Read the error and check the current state before retrying.
-    failure:
-      class: repeated-tool-error
-      when:
-        all:
-          - { field: repeat_count, op: gte, value: 3 }
-          - { field: last.status, op: eq, value: error }
+## Know → fix → verify
+
+1. **Find the failure.** Eleven code signals cover explicit target errors, unchanged failed retries, final errors, completion language, sequence conventions, budgets and missing tools. The top ten are ranked by affected runs.
+2. **Align the definition.** Open a conversation and label positive and negative samples. A deterministic match is precise about its definition, not proof that the behavior was wrong.
+3. **Register the fix.** Point a prompt edit, code patch or optional runtime rule at one signal and a shipped version.
+4. **Check the deploy.** Compare signal rates within intent and segment. Show sample sizes, threshold deltas and worst-run links. Shared deploys remain shared measurements.
+5. **Replay the prefix.** Before deploying, run affected conversations against the candidate prompt/model using cached tool results. Stop at the first divergent action; do not manufacture a pass.
+
+```sh
+mirrors fix add "Validate the writer's target format" \
+  --type code --signal invalid-target-error --source COMMIT_SHA
+mirrors fix ship FIX_ID --version release-2 --baseline release-1
+mirrors fix results FIX_ID
+mirrors fix verify FIX_ID
 ```
 
-Code conditions use a validated predicate language, not arbitrary JavaScript. Rules can also use model judgments with confidence thresholds and timeouts. [Rule reference →](docs/rules.md)
+Verification requires enough outcomes, reviewed positive and negative samples, an improvement, and no observed segment regression. It records an observational result, not isolated causal proof.
 
-## Connect an agent
+## Release health without feature flags
 
-| Integration            | Interface                                | Available interventions                                       |
-| ---------------------- | ---------------------------------------- | ------------------------------------------------------------- |
-| AI SDK 7               | In-process `prepareStep` + tool wrappers | Tail, mask, force, block, human; model swap with resolver     |
-| OpenClaw               | Typed plugin hooks                       | Turn-scoped context injection, block, human                   |
-| Hermes                 | Python plugin hooks + local server       | Turn-scoped context injection, block, human                   |
-| Pydantic AI 2.43+      | Toolset + `ProcessHistory` capability    | Tail, mask, block, human                                      |
-| LangGraph 1            | Composable model/tool node helpers       | Tail, mask, force, block, human; host applies model selection |
-| OpenAI-compatible HTTP | Local chat-completions proxy             | Tail, mask, force, model selection; streaming passthrough     |
-| Other runtimes         | TypeScript engine or loopback JSON API   | All actions; the host applies decisions                       |
+Each run carries its version, model, intent and user segment. Default release thresholds are an increase greater than **5 percentage points**, with **30 completed assessable runs per intent/segment/version**. A global traffic-mix change cannot hide behind a single aggregate rate.
 
-Adapters have different hook capabilities. Hermes/OpenClaw context hooks can run once per turn rather than once per model step. The proxy cannot guard external tool execution. **Read the [integration guide](docs/integrations.md) before activation.**
+```sh
+mirrors watch ./exported-sessions --interval 60
+```
 
-## What the numbers mean
+The watcher polls existing exports and reports changed regressions. With fresh exports and enough samples it can detect a change within the first hour; this is not a latency SLA. For Slack alerts, explicitly add `--webhook-env MIRRORS_SLACK_WEBHOOK`. DocumentDB ingestion uses read-only credentials; scheduled polling can call its CLI command.
 
-- **Fires** count intervention decisions. Shadow matches are separate.
-- **Precision** comes from human labels on fired events; overrides are negatives.
-- **Recurrence** uses completed sessions with an explicit failure signal, never a tool error count divided by tool calls.
-- **Treatment/control** assignment is stable for a rule and session. At 100% rollout there is no control comparison.
-- **Backtests** find historical situations. They do not establish that an unexecuted intervention would have fixed them.
-- **Prompt savings** are differences between explicitly recorded prompt snapshots, estimated as characters / 4. They are not provider billing measurements.
-- **Latency** in the ledger is engine evaluation time. It excludes persistence and HTTP overhead.
+## Optional runtime rules
 
-The demo's lift is invented demonstration data. No production-effectiveness claim is made. See [measurement methodology](docs/measurement.md) and the reproducible [microbenchmark](docs/benchmark.md).
+```sh
+mirrors fix add "When the same tool call fails twice, inspect the error before retrying" \
+  --type rule --signal repeated-identical-error
+```
+
+This creates a linked rule in `mirrors.yaml`, starting in shadow. Code conditions evaluate in-process; optional judgments are capped at 300 ms and fail open. Rules can append tail guidance, mask tools, block calls, and use additional supported adapter actions. Only one injection wins per step. Session-hash treatment/control provides optional isolation.
+
+Adapters: AI SDK 7, Hermes, OpenClaw, Pydantic AI, LangGraph, and a legacy OpenAI-compatible proxy. Hook capabilities differ. **Measurement does not depend on any of them.** [Integration guide →](docs/integrations.md)
+
+## Cheap replay, honest limits
+
+```sh
+mirrors replay invalid-target-error \
+  --model provider/model \
+  --prompt ./candidate-system.txt --limit 100
+```
+
+Replay explicitly calls the configured model provider. It executes no tools. Cached tool names and argument hashes must match, and cached results must be complete. Results are `completed`, `diverged`, `unreplayable` or `error`; scoring stops at divergence. Missing tool schemas require recorded schemas via `--tools FILE`. A batch deadline and bounded concurrency limit work; they do not guarantee every provider completes 100 runs in ten minutes.
 
 ## Local by default
 
-`mirrors.yaml` is the source of truth; commit it and revert changes through git. Private runtime records and imported traces live in `.mirrors/` and should stay out of version control. The UI binds to loopback with local Host/Origin checks. It has no accounts or remote access configuration.
+- SQLite in `.mirrors/index.sqlite` indexes runs, steps, signals, labels, versions, fixes, comparisons and replay reports.
+- Raw exports and normalized conversations stay in local `.mirrors/runs/` files. Tool arguments are hashed in the SQL index.
+- The UI is a single-user loopback service, with Host/Origin validation. No accounts or hosted ingestion.
+- No external model request occurs unless you opt into replay, judgment scoring or corrective-model analysis. Webhook delivery is also explicit.
+- Keep `.mirrors/`, connection strings and private exports out of git. Only synthetic fixtures and screenshots are included here.
 
-No telemetry leaves the machine by default. `serve --judge`, `proxy --judge`, `ask-agent`, and explicit webhook delivery can send data externally. Keys come from environment variables. Mirrors is **fail-open behavioral guidance**, not an authorization or security boundary.
-
-## Commands and tools
+## Docs
 
 - [CLI reference](docs/cli.md)
-- [Rule schema and runtime semantics](docs/rules.md)
-- [Framework integrations and HTTP API](docs/integrations.md)
-- [Trace formats](docs/trace-formats.md)
-- [Measurement and lifecycle](docs/measurement.md)
+- [Signal definitions, labels and measurement](docs/measurement.md)
+- [Trace import and DocumentDB](docs/trace-formats.md)
+- [Runtime integration guide](docs/integrations.md)
+- [Optional rule schema](docs/rules.md) · [runtime metrics](docs/runtime-measurement.md)
 - [Codex / Claude Code skill](skills/mirrors/SKILL.md)
-- [Runnable examples](examples/)
-- [Release scope and roadmap](docs/roadmap.md)
+- [Benchmark methodology](docs/benchmark.md)
+- [Release scope and remaining acceptance checks](docs/roadmap.md)
 
 ## Develop
 
@@ -137,6 +126,6 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s python -p 'test_*.py'
 ```
 
-Tests use local fixtures and mock models, with no provider credentials. `npm run format:check` checks TypeScript, UI and documentation formatting. Contributions should include evidence for changed behavior and start new packs in shadow.
+Tests exercise actual AI SDK, Pydantic AI TestModel and LangGraph APIs without provider credentials. Hermes/OpenClaw hook tests use contract fixtures. `npm run format:check` checks source and docs. Node 22 may print an experimental SQLite warning.
 
-MIT licensed. Mirrors Cloud, a hosted registry, team roles, and cross-customer metrics are future work.
+MIT licensed. Hosted multi-tenant services, stateful world mocking, sandboxes and model training are outside this release.

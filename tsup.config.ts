@@ -7,4 +7,5 @@ export default defineConfig({
   clean: true,
   splitting: true,
   target: 'node22',
+  removeNodeProtocol: false,
 });
