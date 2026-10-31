@@ -1,3 +1,5 @@
+> **This is an early prototype, not the current Mirrors product, and it is no longer maintained.** Mirrors now helps developers maintain production AI agents by turning recurring mistakes into targeted corrections. See [mirrors.dev](https://mirrors.dev) and the [documentation](https://mirrors.dev/docs).
+
 # Mirrors
 
 **Know what broke, by task; track every fix to a number; catch regressions before and after a deploy.**
